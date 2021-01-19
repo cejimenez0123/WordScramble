@@ -11,6 +11,10 @@ struct ContentView: View {
     @State private var usedWords=[String]()
     @State private var rootWord=""
     @State private var newWord=""
+    
+    @State private var errorTitle=""
+    @State private var errorMessage=""
+    @State private var showError=false
     var body: some View {
         NavigationView{
             VStack{
@@ -25,6 +29,9 @@ struct ContentView: View {
                 }
             }.navigationBarTitle(rootWord)
             .onAppear(perform: startGame)
+            .alert(isPresented: $showError, content: {
+                Alert(title: Text(errorTitle), message: Text(errorMessage), dismissButton: .default(Text("ok")))
+            })
         }
     }
     func addNewWord(){
@@ -33,8 +40,25 @@ struct ContentView: View {
         guard answer.count>0 else {
             return
         }
+        guard isOriginal(word: answer) else {
+            wordError(title: "Not Original", message: "Use completely new word")
+            return
+        }
+        guard isPossible(word: answer) else {
+            wordError(title: "Word Not Recognized", message: "Word given, is not a word")
+            return
+        }
+        guard isReal(word: answer) else{
+            wordError(title: "Not real word", message: "You can't make up words")
+            return 
+        }
         usedWords.insert(answer, at: 0)
         newWord=""
+    }
+    func wordError(title: String,message:String){
+        errorTitle=title
+        errorMessage=message
+        showError=true
     }
     func startGame(){
         if let startWordsURL=Bundle.main.url(forResource: "start", withExtension: "txt"){
@@ -47,6 +71,30 @@ struct ContentView: View {
             }
         }
         fatalError("couldNotLoad start.txt")
+    }
+    
+    func isOriginal(word: String)->Bool{
+        !usedWords.contains(word)
+        
+    }
+    func isReal(word: String)->Bool{
+        let checker = UITextChecker()
+        let range = NSRange(location: 0, length: word.utf16.count)
+        let misspelledRange = checker.rangeOfMisspelledWord(in: word, range: range, startingAt: 0, wrap:false, language: "en")
+        return misspelledRange.location == NSNotFound
+    }
+    
+    func isPossible(word: String)->Bool{
+        var tempWord = rootWord.lowercased()
+        for letter in word {
+            if let pos = tempWord.firstIndex(of: letter){
+                tempWord.remove(at: pos)
+            } else {
+                return false
+            }
+            
+        }
+        return true
     }
 }
 
